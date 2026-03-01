@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Page } from "@/App";
 import { CASES, Item, Rarity } from "@/data/gameData";
 import Icon from "@/components/ui/icon";
@@ -22,15 +22,10 @@ function getRandomItem(items: Item[]): Item {
 
 function buildReel(items: Item[], winner: Item): Item[] {
   const reel: Item[] = [];
-  for (let i = 0; i < 40; i++) {
-    const rand = Math.random();
-    if (rand < 0.6) {
-      reel.push(items[Math.floor(Math.random() * items.length)]);
-    } else {
-      reel.push(items.find(it => it.rarity === "common") || items[items.length - 1]);
-    }
+  for (let i = 0; i < 45; i++) {
+    reel.push(items[Math.floor(Math.random() * items.length)]);
   }
-  reel[32] = winner;
+  reel[36] = winner;
   return reel;
 }
 
@@ -48,8 +43,39 @@ const RARITY_LABELS: Record<Rarity, string> = {
   legendary: "Легендарный",
 };
 
-const ITEM_WIDTH = 140;
-const ITEM_GAP = 12;
+const ITEM_WIDTH = 160;
+const ITEM_GAP = 10;
+
+// Fallback image for items without image
+const FALLBACK_IMG = "https://cdn.poehali.dev/projects/e8a39a3e-4587-4b68-8cea-bccb710b5f2a/bucket/c1108cc8-00da-49cb-afb5-e9406b12f1ba.png";
+
+function ItemCard({ item, height = 160 }: { item: Item; height?: number }) {
+  return (
+    <div
+      className="flex-shrink-0 flex flex-col items-center justify-between rounded-xl border overflow-hidden"
+      style={{
+        width: ITEM_WIDTH,
+        height,
+        borderColor: `${RARITY_COLORS[item.rarity]}60`,
+        background: `linear-gradient(160deg, ${RARITY_COLORS[item.rarity]}12, ${RARITY_COLORS[item.rarity]}04)`,
+      }}
+    >
+      <div className="flex-1 w-full flex items-center justify-center p-2">
+        {item.image ? (
+          <img src={item.image} alt={item.name} className="w-full h-full object-contain" />
+        ) : (
+          <div className="text-4xl opacity-60">🗡️</div>
+        )}
+      </div>
+      <div className="w-full px-2 pb-2 text-center">
+        <p className="text-xs font-medium leading-tight line-clamp-2"
+          style={{ color: RARITY_COLORS[item.rarity] }}>
+          {item.name}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function OpenCasePage({ caseId, navigate }: OpenCasePageProps) {
   const caseData = CASES.find((c) => c.id === caseId) || CASES[0];
@@ -69,12 +95,12 @@ export default function OpenCasePage({ caseId, navigate }: OpenCasePageProps) {
     setWinner(null);
     setState("spinning");
     setShowConfetti(false);
-
-    const targetIndex = 32;
-    const centerOffset = (5 * (ITEM_WIDTH + ITEM_GAP)) / 2 - ITEM_WIDTH / 2;
-    const targetOffset = targetIndex * (ITEM_WIDTH + ITEM_GAP) - centerOffset - Math.random() * 60 + 30;
-
     setOffset(0);
+
+    const targetIndex = 36;
+    const centerOffset = Math.floor(5 / 2) * (ITEM_WIDTH + ITEM_GAP);
+    const targetOffset = targetIndex * (ITEM_WIDTH + ITEM_GAP) - centerOffset + Math.random() * 40 - 20;
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         setOffset(targetOffset);
@@ -87,7 +113,7 @@ export default function OpenCasePage({ caseId, navigate }: OpenCasePageProps) {
       if (won.rarity === "legendary" || won.rarity === "epic") {
         setShowConfetti(true);
       }
-    }, 5000);
+    }, 5500);
   };
 
   const reset = () => {
@@ -99,17 +125,16 @@ export default function OpenCasePage({ caseId, navigate }: OpenCasePageProps) {
   };
 
   const color = caseData.color;
+  const previewItems = Array.from({ length: 7 }, (_, i) => caseData.items[i % caseData.items.length]);
 
   return (
     <div className="pt-24 pb-16 min-h-screen bg-grid">
-      {/* BG glow */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-5 blur-3xl"
-          style={{ background: `radial-gradient(circle, ${color}, transparent)` }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full opacity-6 blur-3xl"
+          style={{ background: `radial-gradient(circle, ${color}50, transparent)` }} />
       </div>
 
       <div className="max-w-5xl mx-auto px-4">
-        {/* Back */}
         <button
           onClick={() => navigate("cases")}
           className="flex items-center gap-2 text-white/40 hover:text-white mb-8 transition-colors text-sm"
@@ -117,97 +142,69 @@ export default function OpenCasePage({ caseId, navigate }: OpenCasePageProps) {
           <Icon name="ArrowLeft" size={16} /> Назад к кейсам
         </button>
 
-        {/* Case Info */}
-        <div className="text-center mb-10">
-          <h1 className="font-russo text-4xl md:text-6xl text-white mb-3">
-            {caseData.name}
-          </h1>
-          <p className="text-white/40">Стоимость открытия: <span className="font-bold" style={{ color }}>{caseData.price * multiplier} ₽</span></p>
+        {/* Case Header */}
+        <div className="flex flex-col md:flex-row items-center gap-8 mb-10">
+          <div className="relative">
+            <img
+              src={caseData.image}
+              alt={caseData.name}
+              className="w-36 h-36 object-cover rounded-2xl"
+              style={{ boxShadow: `0 0 50px ${caseData.glowColor}` }}
+            />
+          </div>
+          <div>
+            <h1 className="font-russo text-4xl md:text-5xl text-white mb-2">{caseData.name}</h1>
+            <p className="text-white/40 mb-1">{caseData.items.length} предметов в кейсе</p>
+            <p className="text-white/40">Цена открытия: <span className="font-bold text-lg" style={{ color }}>{(caseData.price * multiplier).toLocaleString()} ₽</span></p>
+          </div>
         </div>
 
-        {/* Reel Container */}
-        <div className="relative mb-8">
-          {/* Selector line */}
-          <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 z-20 pointer-events-none"
-            style={{ background: `linear-gradient(to bottom, transparent, ${color}, transparent)`, boxShadow: `0 0 10px ${color}` }} />
-          {/* Top/bottom fade */}
-          <div className="absolute inset-y-0 left-0 w-32 z-10 pointer-events-none"
-            style={{ background: "linear-gradient(to right, rgba(13,13,20,1), transparent)" }} />
-          <div className="absolute inset-y-0 right-0 w-32 z-10 pointer-events-none"
-            style={{ background: "linear-gradient(to left, rgba(13,13,20,1), transparent)" }} />
+        {/* Reel */}
+        <div className="relative mb-6">
+          <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[2px] z-20 pointer-events-none"
+            style={{ background: `linear-gradient(to bottom, transparent, ${color}, transparent)`, boxShadow: `0 0 12px ${color}, 0 0 24px ${color}` }} />
+          <div className="absolute inset-y-0 left-0 w-40 z-10 pointer-events-none"
+            style={{ background: "linear-gradient(to right, hsl(220,20%,6%), transparent)" }} />
+          <div className="absolute inset-y-0 right-0 w-40 z-10 pointer-events-none"
+            style={{ background: "linear-gradient(to left, hsl(220,20%,6%), transparent)" }} />
 
-          <div className="overflow-hidden rounded-2xl border border-white/5 bg-black/30"
-            style={{ height: 200, boxShadow: `0 0 40px ${caseData.glowColor}` }}>
+          <div
+            className="overflow-hidden rounded-2xl border border-white/5 bg-black/40"
+            style={{ height: 190, boxShadow: `0 0 40px ${caseData.glowColor}` }}
+          >
             <div
               ref={reelRef}
-              className="flex items-center gap-3 h-full"
+              className="flex items-center gap-[10px] h-full pl-4"
               style={{
                 transform: `translateX(calc(50% - ${offset + ITEM_WIDTH / 2}px))`,
                 transition: state === "spinning"
-                  ? "transform 5s cubic-bezier(0.05, 0.5, 0.1, 1)"
+                  ? "transform 5.5s cubic-bezier(0.02, 0.6, 0.08, 1)"
                   : "none",
                 willChange: "transform",
-                paddingLeft: 16,
               }}
             >
-              {reel.length > 0 ? reel.map((item, i) => (
-                <div
-                  key={i}
-                  className="flex-shrink-0 flex flex-col items-center justify-center rounded-xl border"
-                  style={{
-                    width: ITEM_WIDTH,
-                    height: 160,
-                    borderColor: `${RARITY_COLORS[item.rarity]}50`,
-                    background: `${RARITY_COLORS[item.rarity]}08`,
-                  }}
-                >
-                  <span className="text-5xl mb-2">{item.emoji}</span>
-                  <span className="text-xs font-medium text-center px-2 leading-tight"
-                    style={{ color: RARITY_COLORS[item.rarity] }}>{item.name}</span>
-                </div>
-              )) : (
-                // Static preview items
-                Array.from({ length: 7 }, (_, i) => {
-                  const item = caseData.items[i % caseData.items.length];
-                  return (
-                    <div
-                      key={i}
-                      className="flex-shrink-0 flex flex-col items-center justify-center rounded-xl border"
-                      style={{
-                        width: ITEM_WIDTH,
-                        height: 160,
-                        borderColor: `${RARITY_COLORS[item.rarity]}40`,
-                        background: `${RARITY_COLORS[item.rarity]}05`,
-                      }}
-                    >
-                      <span className="text-5xl mb-2">{item.emoji}</span>
-                      <span className="text-xs font-medium text-center px-2"
-                        style={{ color: RARITY_COLORS[item.rarity] }}>{item.name}</span>
-                    </div>
-                  );
-                })
-              )}
+              {(reel.length > 0 ? reel : previewItems).map((item, i) => (
+                <ItemCard key={i} item={item} height={170} />
+              ))}
             </div>
           </div>
         </div>
 
         {/* Multiplier */}
-        <div className="flex justify-center gap-3 mb-6">
+        <div className="flex justify-center gap-2 mb-6">
           {[1, 2, 3, 5].map((m) => (
             <button
               key={m}
               onClick={() => setMultiplier(m)}
               disabled={state === "spinning"}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                multiplier === m
-                  ? "border font-russo"
-                  : "border border-white/10 text-white/40 hover:text-white/70"
-              }`}
+              className="px-5 py-2 rounded-lg text-sm font-bold transition-all disabled:opacity-40"
               style={multiplier === m ? {
-                color,
-                borderColor: `${color}60`,
-                background: `${color}10`,
-              } : {}}
+                color, borderColor: `${color}60`,
+                background: `${color}15`, border: `1px solid ${color}60`,
+              } : {
+                color: "rgba(255,255,255,0.35)",
+                border: "1px solid rgba(255,255,255,0.1)",
+              }}
             >
               x{m}
             </button>
@@ -215,102 +212,94 @@ export default function OpenCasePage({ caseId, navigate }: OpenCasePageProps) {
         </div>
 
         {/* Open Button */}
-        {state !== "result" ? (
-          <div className="text-center">
+        {state !== "result" && (
+          <div className="text-center mb-16">
             <button
               onClick={spin}
               disabled={state === "spinning"}
-              className="px-12 py-5 rounded-2xl font-russo text-xl tracking-widest transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="px-14 py-5 rounded-2xl font-russo text-xl tracking-widest transition-all duration-300 disabled:cursor-not-allowed cursor-pointer"
               style={{
-                background: state === "spinning"
-                  ? `${color}10`
-                  : `linear-gradient(135deg, ${color}30, ${color}10)`,
-                border: `2px solid ${color}`,
-                color: state === "idle" ? color : `${color}80`,
-                boxShadow: state === "idle" ? `0 0 40px ${caseData.glowColor}, 0 0 80px ${caseData.glowColor}` : "none",
+                background: state === "spinning" ? `${color}08` : `linear-gradient(135deg, ${color}25, ${color}08)`,
+                border: `2px solid ${state === "spinning" ? `${color}40` : color}`,
+                color: state === "idle" ? color : `${color}50`,
+                boxShadow: state === "idle" ? `0 0 50px ${caseData.glowColor}` : "none",
               }}
             >
-              {state === "spinning" ? "⚡ КРУТИТСЯ..." : `🎰 ОТКРЫТЬ — ${caseData.price * multiplier} ₽`}
+              {state === "spinning" ? "⚡ КРУТИТСЯ..." : `🎰 ОТКРЫТЬ — ${(caseData.price * multiplier).toLocaleString()} ₽`}
             </button>
           </div>
-        ) : null}
+        )}
 
         {/* Result */}
         {state === "result" && winner && (
-          <div className="text-center animate-scale-in">
+          <div className="text-center mb-16 animate-scale-in">
             {showConfetti && (
               <div className="fixed inset-0 pointer-events-none z-50">
-                {Array.from({ length: 20 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="absolute animate-particle"
+                {Array.from({ length: 24 }).map((_, i) => (
+                  <div key={i} className="absolute animate-particle text-2xl"
                     style={{
-                      left: `${Math.random() * 100}%`,
-                      top: `${30 + Math.random() * 40}%`,
-                      animationDelay: `${Math.random() * 1}s`,
-                      fontSize: 24,
-                    }}
-                  >
-                    {["✨", "💫", "⭐", "🌟"][Math.floor(Math.random() * 4)]}
+                      left: `${10 + Math.random() * 80}%`,
+                      top: `${20 + Math.random() * 50}%`,
+                      animationDelay: `${Math.random() * 0.8}s`,
+                    }}>
+                    {["✨", "💫", "⭐", "🌟", "💥"][Math.floor(Math.random() * 5)]}
                   </div>
                 ))}
               </div>
             )}
 
-            <div
-              className="inline-block p-8 rounded-2xl mb-6 animate-winner-flash"
+            <div className="inline-block animate-winner-flash rounded-2xl p-8 mb-6"
               style={{
                 background: `${RARITY_COLORS[winner.rarity]}10`,
                 border: `2px solid ${RARITY_COLORS[winner.rarity]}`,
-              }}
-            >
-              <div className="text-8xl mb-4">{winner.emoji}</div>
+              }}>
+              {winner.image ? (
+                <img src={winner.image} alt={winner.name} className="w-40 h-40 object-contain mx-auto mb-4" />
+              ) : (
+                <div className="text-8xl mb-4">🗡️</div>
+              )}
               <div className="font-russo text-2xl text-white mb-1">{winner.name}</div>
-              <div className="font-bold text-sm mb-3" style={{ color: RARITY_COLORS[winner.rarity] }}>
+              <div className="font-bold text-sm mb-3 tracking-widest" style={{ color: RARITY_COLORS[winner.rarity] }}>
                 {RARITY_LABELS[winner.rarity].toUpperCase()}
               </div>
-              <div className="text-3xl font-russo" style={{ color: RARITY_COLORS[winner.rarity] }}>
+              <div className="font-russo text-3xl" style={{ color: RARITY_COLORS[winner.rarity] }}>
                 +{winner.price.toLocaleString()} ₽
               </div>
             </div>
 
             <div className="flex gap-3 justify-center">
-              <button
-                onClick={reset}
-                className="glow-btn-cyan px-8 py-3 rounded-xl font-russo text-sm cursor-pointer"
-              >
+              <button onClick={reset} className="glow-btn-cyan px-8 py-3 rounded-xl font-russo text-sm cursor-pointer">
                 🔄 Открыть ещё
               </button>
-              <button
-                onClick={() => navigate("profile")}
-                className="glow-btn-purple px-8 py-3 rounded-xl font-russo text-sm cursor-pointer"
-              >
+              <button onClick={() => navigate("profile")} className="glow-btn-purple px-8 py-3 rounded-xl font-russo text-sm cursor-pointer">
                 👤 В профиль
               </button>
             </div>
           </div>
         )}
 
-        {/* Case Contents */}
-        <div className="mt-16">
-          <h2 className="font-russo text-2xl text-white mb-6 text-center">
-            Содержимое кейса
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        {/* Contents */}
+        <div>
+          <h2 className="font-russo text-2xl text-white mb-6 text-center">Содержимое кейса</h2>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
             {caseData.items.map((item) => (
               <div
                 key={item.id}
-                className="flex flex-col items-center p-4 rounded-xl border transition-all hover:scale-105 cursor-default"
+                className="flex flex-col items-center p-3 rounded-xl border transition-all hover:scale-105 cursor-default group"
                 style={{
-                  borderColor: `${RARITY_COLORS[item.rarity]}40`,
+                  borderColor: `${RARITY_COLORS[item.rarity]}35`,
                   background: `${RARITY_COLORS[item.rarity]}06`,
                 }}
               >
-                <span className="text-4xl mb-2">{item.emoji}</span>
-                <span className="text-xs font-medium text-center leading-tight mb-1"
-                  style={{ color: RARITY_COLORS[item.rarity] }}>{item.name}</span>
-                <span className="text-white/40 text-xs">{item.chance}%</span>
-                <span className="text-white/60 text-xs font-bold mt-1">{item.price}₽</span>
+                {item.image ? (
+                  <img src={item.image} alt={item.name} className="w-20 h-20 object-contain mb-2" />
+                ) : (
+                  <div className="w-20 h-20 flex items-center justify-center text-4xl mb-2 opacity-50">🗡️</div>
+                )}
+                <p className="text-xs font-medium text-center leading-tight mb-1"
+                  style={{ color: RARITY_COLORS[item.rarity] }}>{item.name}</p>
+                <p className="text-white/30 text-xs">{item.chance}%</p>
+                <p className="text-white/60 text-xs font-bold">{item.price.toLocaleString()}₽</p>
               </div>
             ))}
           </div>
