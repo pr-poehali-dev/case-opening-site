@@ -1,28 +1,40 @@
-
+import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
+import HomePage from "./pages/HomePage";
+import CasesPage from "./pages/CasesPage";
+import OpenCasePage from "./pages/OpenCasePage";
+import LeaderboardPage from "./pages/LeaderboardPage";
+import ProfilePage from "./pages/ProfilePage";
+import ContactsPage from "./pages/ContactsPage";
+import Navbar from "./components/Navbar";
 
-const queryClient = new QueryClient();
+export type Page = "home" | "cases" | "open" | "leaderboard" | "profile" | "contacts";
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+export default function App() {
+  const [currentPage, setCurrentPage] = useState<Page>("home");
+  const [selectedCase, setSelectedCase] = useState<string | null>(null);
+
+  const navigate = (page: Page, caseId?: string) => {
+    setCurrentPage(page);
+    if (caseId) setSelectedCase(caseId);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  return (
     <TooltipProvider>
       <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <div className="min-h-screen bg-background font-rubik">
+        <Navbar currentPage={currentPage} navigate={navigate} />
+        <main>
+          {currentPage === "home" && <HomePage navigate={navigate} />}
+          {currentPage === "cases" && <CasesPage navigate={navigate} />}
+          {currentPage === "open" && <OpenCasePage caseId={selectedCase} navigate={navigate} />}
+          {currentPage === "leaderboard" && <LeaderboardPage navigate={navigate} />}
+          {currentPage === "profile" && <ProfilePage navigate={navigate} />}
+          {currentPage === "contacts" && <ContactsPage navigate={navigate} />}
+        </main>
+      </div>
     </TooltipProvider>
-  </QueryClientProvider>
-);
-
-export default App;
+  );
+}
